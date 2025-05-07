@@ -1,0 +1,63 @@
+/* App.css - Main styling for the application */
+
+body {
+  background-color: #f8f9fa;
+}
+
+.card {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.campaign-status {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-draft {
+  background-color: #e2e3e5;
+  color: #41464b;
+}
+
+.status-active {
+  background-color: #d1e7dd;
+  color: #0f5132;
+}
+
+.status-paused {
+  background-color: #fff3cd;
+  color: #664d03;
+}
+
+.status-completed {
+  background-color: #cff4fc;
+  color: #055160;
+}
+
+.form-container {
+  background-color: white;
+  padding: 20px;
+  border-radius: 5px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.page-title {
+  margin-bottom: 25px;
+  color: #343a40;
+}
+
+.advertisement-card {
+  transition: transform 0.2s;
+}
+
+.advertisement-card:hover {
+  transform: translateY(-5px);
+}
