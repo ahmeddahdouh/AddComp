@@ -15,7 +15,6 @@ services:
     command: ["python", "app.py"]
     volumes:
       - ./backend:/app
-      - ./backend/entrypoint.sh:/app/entrypoint.sh
 
   frontend:
     build:
