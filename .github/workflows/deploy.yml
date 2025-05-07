@@ -2,61 +2,65 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main" ]
 
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME}}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Create env file
-      run: |
-        echo "DB_USER=postgres" >> .env
-        echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
-        echo "DB_HOST=db" >> .env
-        echo "DB_NAME=addcomp" >> .env
-        echo "DB_PORT=5432" >> .env
-        echo "FLASK_APP=app.py" >> .env
-        echo "FLASK_ENV=development" >> .env
+      - name: Create .env file
+        run: |
+          echo "DB_USER=postgres" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "DB_HOST=db" >> .env
+          echo "DB_NAME=addcomp" >> .env
+          echo "DB_PORT=5432" >> .env
+          echo "FLASK_APP=app.py" >> .env
+          echo "FLASK_ENV=development" >> .env
 
-    - name: Install Docker Compose
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y docker-compose
+      - name: Install Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
 
-    - name: Build and start services
-      run: |
-        docker-compose up -d --build
-        sleep 20 # Attendre que les services démarrent
+      - name: Build and start services
+        run: |
+          docker-compose up -d --build
+          echo "⏳ Attente des services..."
+          sleep 25
 
-    - name: Check running containers
-      run: docker ps -a
+      - name: Check running containers
+        run: docker ps -a
 
-    - name: Test Backend API
-      run: |
-        curl --fail http://localhost:5000/api/campaigns || (docker-compose logs && exit 1)
+      - name: Test Backend API
+        run: |
+          echo "🔍 Test API Backend"
+          curl --retry 5 --retry-connrefused --fail http://localhost:5000/api/campaigns || (docker-compose logs && exit 1)
 
-    - name: Run Frontend Health Check
-      run: |
-        curl --fail http://localhost:3000 || (docker-compose logs && exit 1)
+      - name: Run Frontend Health Check
+        run: |
+          echo "🔍 Test Frontend"
+          curl --retry 5 --retry-connrefused --fail http://localhost:3000 || (docker-compose logs && exit 1)
 
-    - name: Display logs if tests fail
-      if: failure()
-      run: docker-compose logs
+      - name: Display logs if tests fail
+        if: failure()
+        run: docker-compose logs
 
-    - name: Stop containers
-      if: always()
-      run: docker-compose down
+      - name: Stop containers
+        if: always()
+        run: docker-compose down
 
   deploy:
     needs: test-and-build
@@ -64,25 +68,25 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Build and push Backend
-      uses: docker/build-push-action@v4
-      with:
-        context: ./backend
-        push: true
-        tags: ${{ secrets.DOCKERHUB_USERNAME }}/addcomp-backend:latest
+      - name: Build and push Backend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/addcomp-backend:latest
 
-    - name: Build and push Frontend
-      uses: docker/build-push-action@v4
-      with:
-        context: ./frontend
-        push: true
-        tags: ${{ secrets.DOCKERHUB_USERNAME }}/addcomp-frontend:latest
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/addcomp-frontend:latest
