@@ -8,7 +8,7 @@ RUN pip install -r requirements.txt
 COPY . .
 
 # Donner les droits d'exécution
-RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh || true
 
 # Utiliser entrypoint + cmd
 ENTRYPOINT ["/app/entrypoint.sh"]
