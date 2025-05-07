@@ -25,7 +25,7 @@ jobs:
           echo "DB_USER=postgres" >> .env
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
           echo "DB_HOST=db" >> .env
-          echo "DB_NAME=addcomp" >> .env
+          echo "DB_NAME=compagnePub" >> .env
           echo "DB_PORT=5432" >> .env
           echo "FLASK_APP=app.py" >> .env
           echo "FLASK_ENV=development" >> .env
@@ -76,6 +76,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Build and push Backend
         uses: docker/build-push-action@v4
         with:
