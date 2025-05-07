@@ -45,7 +45,7 @@ jobs:
         run: |
           docker-compose up -d --build
           echo "⏳ Attente des services..."
-          sleep 25
+          sleep 60
 
       - name: Check running containers
         run: docker ps -a
