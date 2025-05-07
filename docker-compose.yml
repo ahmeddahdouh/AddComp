@@ -1,38 +1,23 @@
 version: '3.8'
+
 services:
-  backend:
-    build:
-      context: ./backend
+  web:
+    image: flask-backend
     container_name: flask-backend
     ports:
-      - "5000:5000"
-    env_file:
-      - .env
+      - "5001:5001"
     depends_on:
       - db
-    command: ["python", "app.py"]
-    volumes:
-      - ./backend:/app
-
-  frontend:
-    build:
-      context: ./frontend
-    container_name: react-frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
 
   db:
-    image: postgres:15
-    container_name: postgres-db
-    restart: always
-    env_file:
-      - .env
+    image: postgres:13
+    container_name: postgres-db_c
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     volumes:
-      - postgres-data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+      - pgdata:/var/lib/postgresql/data
 
 volumes:
-  postgres-data:
+  pgdata:
