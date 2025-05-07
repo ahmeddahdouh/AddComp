@@ -11,7 +11,6 @@ services:
       - .env
     depends_on:
       - db
-    entrypoint: ["/app/entrypoint.sh"]
     command: ["python", "app.py"]
     volumes:
       - ./backend:/app
