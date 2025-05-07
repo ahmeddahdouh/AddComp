@@ -7,10 +7,9 @@ services:
     container_name: flask-backend
     ports:
       - "5000:5000"
-    environment:
-      - DATABASE_URL=postgresql://postgres:admin@db:5432/compagnePub
     depends_on:
       - db
+
 
   frontend:
     build:
@@ -26,9 +25,9 @@ services:
     container_name: postgres-db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: compagnePub
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     ports:
