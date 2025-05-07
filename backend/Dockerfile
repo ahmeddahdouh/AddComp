@@ -1,24 +1,21 @@
+# Utilise une image Python officielle
 FROM python:3.10-slim
 
+# Crée un répertoire pour l'application
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+# Copie les fichiers nécessaires
+COPY . /app
 
-# Installer netcat pour la commande nc dans le script
-RUN apt-get update && apt-get install -y netcat-openbsd
+# Installe les dépendances système (si besoin pour psycopg2 par exemple)
+RUN apt-get update && apt-get install -y gcc libpq-dev && \
+    pip install --no-cache-dir --upgrade pip
 
-# Créer le script directement dans le Dockerfile
-RUN echo '#!/bin/sh' > /app/entrypoint.sh \
-    && echo 'echo "Waiting for db..."' >> /app/entrypoint.sh \
-    && echo 'while ! nc -z db 5432; do' >> /app/entrypoint.sh \
-    && echo '  sleep 0.5' >> /app/entrypoint.sh \
-    && echo 'done' >> /app/entrypoint.sh \
-    && echo 'echo "PostgreSQL started"' >> /app/entrypoint.sh \
-    && echo 'exec "$@"' >> /app/entrypoint.sh \
-    && chmod +x /app/entrypoint.sh
+# Installe les dépendances Python
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Expose le port utilisé par Flask
+EXPOSE 5000
 
-ENTRYPOINT ["/bin/sh", "/app/entrypoint.sh"]
+# Commande pour lancer l'application
 CMD ["python", "app.py"]

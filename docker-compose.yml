@@ -8,7 +8,11 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - DATABASE_URL=postgresql://postgres:admin@db:5432/compagnePub
+      DB_USER: postgres
+      DB_PASSWORD: admin
+      DB_NAME: compagnePub
+      DB_HOST: db
+      DB_PORT: 5432
     depends_on:
       - db
     entrypoint: ["/app/entrypoint.sh"]

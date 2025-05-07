@@ -191,4 +191,4 @@ if __name__ == '__main__':
     # Create tables before running the app
     with app.app_context():
         create_tables()
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
