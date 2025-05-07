@@ -37,7 +37,7 @@ jobs:
 
       - name: Build and start backend services
         run: |
-          docker-compose -f docker-compose.backend.yml up -d --build
+          docker-compose -f docker-compose.yml up -d --build
           echo "⏳ Attente du backend..."
           sleep 25
 
@@ -51,11 +51,11 @@ jobs:
 
       - name: Display logs if tests fail
         if: failure()
-        run: docker-compose -f docker-compose.backend.yml logs
+        run: docker-compose -f docker-compose.yml logs
 
       - name: Stop backend containers
         if: always()
-        run: docker-compose -f docker-compose.backend.yml down
+        run: docker-compose -f docker-compose.yml down
 
   deploy-backend:
     needs: test-backend
