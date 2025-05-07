@@ -20,6 +20,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Fix backend entrypoint script permissions
+        run: |
+          chmod +x backend/entrypoint.sh
+          git update-index --chmod=+x backend/entrypoint.sh
+
       - name: Create .env file
         run: |
           echo "DB_USER=postgres" >> .env
@@ -30,29 +35,28 @@ jobs:
           echo "FLASK_APP=app.py" >> .env
           echo "FLASK_ENV=development" >> .env
 
-      - name: Install Docker Compose
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker-compose
+      - name: Start services with Docker Compose
+        run: docker-compose up -d --build
 
-      - name: Build and start services
+      - name: Wait for services to be ready
         run: |
-          docker-compose up -d --build
-          echo "⏳ Attente des services..."
-          sleep 25
+          echo "⏳ Waiting for backend service..."
+          timeout 60s bash -c 'until curl -s http://localhost:5000/api/health || curl -s http://localhost:5000/api/campaigns; do sleep 2; done'
+          echo "⏳ Waiting for frontend service..."
+          timeout 60s bash -c 'until curl -s http://localhost:3000 > /dev/null; do sleep 2; done'
 
       - name: Check running containers
         run: docker ps -a
 
       - name: Test Backend API
         run: |
-          echo "🔍 Test API Backend"
-          curl --retry 5 --retry-connrefused --fail http://localhost:5000/api/campaigns || (docker-compose logs && exit 1)
+          echo "🔍 Testing Backend API"
+          curl --fail http://localhost:5000/api/campaigns || (docker-compose logs backend && exit 1)
 
-      - name: Run Frontend Health Check
+      - name: Test Frontend
         run: |
-          echo "🔍 Test Frontend"
-          curl --retry 5 --retry-connrefused --fail http://localhost:3000 || (docker-compose logs && exit 1)
+          echo "🔍 Testing Frontend"
+          curl --fail http://localhost:3000 || (docker-compose logs frontend && exit 1)
 
       - name: Display logs if tests fail
         if: failure()
@@ -65,7 +69,8 @@ jobs:
   deploy:
     needs: test-and-build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # Changed from 'main' to 'master' to match the branch you're using
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
 
     steps:
       - name: Checkout code
@@ -76,6 +81,10 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Fix backend entrypoint script permissions
+        run: chmod +x backend/entrypoint.sh
+
       - name: Build and push Backend
         uses: docker/build-push-action@v4
         with:
