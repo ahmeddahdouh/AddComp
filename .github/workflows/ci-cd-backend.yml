@@ -32,13 +32,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          context: ./backend
           python-version: '3.11'
 
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r .backend/requirements.txt
 
       - name: Run basic syntax check
         run: |
