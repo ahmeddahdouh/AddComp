@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   backend:
     build:
@@ -9,6 +11,10 @@ services:
       - DATABASE_URL=postgresql://postgres:admin@db:5432/compagnePub
     depends_on:
       - db
+    entrypoint: ["/app/entrypoint.sh"]
+    command: ["python", "app.py"]
+    volumes:
+      - ./backend:/app
 
   frontend:
     build:
