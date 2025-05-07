@@ -1,39 +1,71 @@
-test:
-  runs-on: ubuntu-latest
-  steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+name: CI/CD
 
-    - name: Install docker-compose
-      run: |
-        sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
-        docker-compose --version
+on:
+  push:
+    branches: [master]
 
-    - name: Test with Docker Compose
-      run: |
-        docker-compose up -d
-        sleep 30
+env:
+  DOCKERHUB_USERNAME: ahmeddocker98
+  BACKEND_IMAGE: ahmeddocker98/mon-backend
+  FRONTEND_IMAGE: ahmeddocker98/mon-frontend
 
-        BACKEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000)
-        echo "Backend status code: $BACKEND_STATUS"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-        FRONTEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000)
-        echo "Frontend status code: $FRONTEND_STATUS"
+      - name: Install docker-compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
 
-        if [ "$BACKEND_STATUS" -ne 200 ] && [ "$BACKEND_STATUS" -ne 404 ]; then
-          echo "Backend service is not responding properly"
-          docker-compose logs backend
+      - name: Test with Docker Compose
+        run: |
+          docker-compose up -d
+          sleep 30
+
+          BACKEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000)
+          echo "Backend status code: $BACKEND_STATUS"
+
+          FRONTEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000)
+          echo "Frontend status code: $FRONTEND_STATUS"
+
+          if [ "$BACKEND_STATUS" -ne 200 ] && [ "$BACKEND_STATUS" -ne 404 ]; then
+            echo "Backend service is not responding properly"
+            docker-compose logs backend
+            docker-compose down
+            exit 1
+          fi
+
+          if [ "$FRONTEND_STATUS" -ne 200 ] && [ "$FRONTEND_STATUS" -ne 404 ]; then
+            echo "Frontend service is not responding properly"
+            docker-compose logs frontend
+            docker-compose down
+            exit 1
+          fi
+
+          echo "All services are running correctly"
           docker-compose down
-          exit 1
-        fi
 
-        if [ "$FRONTEND_STATUS" -ne 200 ] && [ "$FRONTEND_STATUS" -ne 404 ]; then
-          echo "Frontend service is not responding properly"
-          docker-compose logs frontend
-          docker-compose down
-          exit 1
-        fi
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-        echo "All services are running correctly"
-        docker-compose down
+      - name: Log in to DockerHub
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u $DOCKERHUB_USERNAME --password-stdin
+
+      - name: Build & Push Backend
+        run: |
+          docker build -t $BACKEND_IMAGE:latest ./backend
+          docker push $BACKEND_IMAGE:latest
+
+      - name: Build & Push Frontend
+        run: |
+          docker build -t $FRONTEND_IMAGE:latest ./frontend
+          docker push $FRONTEND_IMAGE:latest
