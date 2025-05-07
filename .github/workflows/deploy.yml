@@ -1,4 +1,4 @@
-name: CI/CD Pipeline - Backend Only
+name: CI/CD Pipeline
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ "master" ]
 
 jobs:
-  test-backend:
+  test-and-build:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,7 +20,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Create .env file for backend
+      - name: Create .env file
         run: |
           echo "DB_USER=postgres" >> .env
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
@@ -35,10 +35,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y docker-compose
 
-      - name: Build and start backend services
+      - name: Build and start services
         run: |
-          docker-compose -f docker-compose.yml up -d --build
-          echo "⏳ Attente du backend..."
+          docker-compose up -d --build
+          echo "⏳ Attente des services..."
           sleep 25
 
       - name: Check running containers
@@ -47,20 +47,25 @@ jobs:
       - name: Test Backend API
         run: |
           echo "🔍 Test API Backend"
-          curl --retry 5 --retry-connrefused --fail http://localhost:5000/api/campaigns || (docker-compose -f docker-compose.backend.yml logs && exit 1)
+          curl --retry 5 --retry-connrefused --fail http://localhost:5000/api/campaigns || (docker-compose logs && exit 1)
+
+      - name: Run Frontend Health Check
+        run: |
+          echo "🔍 Test Frontend"
+          curl --retry 5 --retry-connrefused --fail http://localhost:3000 || (docker-compose logs && exit 1)
 
       - name: Display logs if tests fail
         if: failure()
-        run: docker-compose -f docker-compose.yml logs
+        run: docker-compose logs
 
-      - name: Stop backend containers
+      - name: Stop containers
         if: always()
-        run: docker-compose -f docker-compose.yml down
+        run: docker-compose down
 
-  deploy-backend:
-    needs: test-backend
+  deploy:
+    needs: test-and-build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
 
     steps:
       - name: Checkout code
@@ -71,10 +76,16 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Build and push Backend
         uses: docker/build-push-action@v4
         with:
           context: ./backend
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/addcomp-backend:latest
+
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/addcomp-frontend:latest
