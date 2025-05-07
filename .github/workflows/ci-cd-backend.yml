@@ -37,28 +37,31 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r .backend/requirements.txt
+          pip install -r ./backend/requirements.txt
 
       - name: Run basic syntax check
         run: |
-          python -m py_compile run.py
+          python -m py_compile backend/run.py
 
       - name: Build Docker image
         run: |
           docker build -t my-flask-app ./backend
 
-
       - name: Set environment variables
         run: |
           echo "DB_USER=postgres" >> $GITHUB_ENV
           echo "DB_PASSWORD=admin" >> $GITHUB_ENV
-          echo "DB_NAME=sportConnectBack" >> $GITHUB_ENV
+          echo "DB_NAME=compagnePub" >> $GITHUB_ENV
 
       - name: Run docker compose
         run: |
-          docker compose up -d
+          docker compose -f ./backend/docker-compose.yml up -d
           sleep 20
+
+      - name: Test API Endpoint
+        run: |
+          curl --retry 5 --retry-delay 2 --fail http://localhost:5000 || exit 1
 
       - name: Shutdown docker compose
         run: |
-          docker compose down
+          docker compose -f ./backend/docker-compose.yml down
