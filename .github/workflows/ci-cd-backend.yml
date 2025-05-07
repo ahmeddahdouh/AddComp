@@ -43,9 +43,10 @@ jobs:
         run: |
           python -m py_compile run.py
 
-      -- name: Build Docker image
-                 - run: |
-                 - docker build -t my-flask-app ./backend
+      - name: Build Docker image
+        run: |
+          docker build -t my-flask-app ./backend
+
 
       - name: Set environment variables
         run: |
