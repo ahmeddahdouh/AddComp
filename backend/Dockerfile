@@ -1,21 +1,21 @@
-# Utilise une image Python officielle
 FROM python:3.10-slim
 
-# Crée un répertoire pour l'application
 WORKDIR /app
 
-# Copie les fichiers nécessaires
-COPY . /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
-# Installe les dépendances système (si besoin pour psycopg2 par exemple)
-RUN apt-get update && apt-get install -y gcc libpq-dev && \
-    pip install --no-cache-dir --upgrade pip
+# Installer netcat pour la commande nc dans le script
+RUN apt-get update && apt-get install -y netcat-openbsd
 
-# Installe les dépendances Python
-RUN pip install --no-cache-dir -r requirements.txt
+# Copier le script d'entrée (au lieu de le créer dans le Dockerfile)
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
-# Expose le port utilisé par Flask
+# Exposer le port 5000
 EXPOSE 5000
 
-# Commande pour lancer l'application
+COPY . .
+
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["python", "app.py"]
