@@ -1,71 +1,83 @@
-name: CI/CD
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [master]
-
-env:
-  DOCKERHUB_USERNAME: ahmeddocker98
-  BACKEND_IMAGE: ahmeddocker98/mon-backend
-  FRONTEND_IMAGE: ahmeddocker98/mon-frontend
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
 
 jobs:
-  test:
+  test-and-build:
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - uses: actions/checkout@v3
 
-      - name: Install docker-compose
-        run: |
-          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose --version
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Test with Docker Compose
-        run: |
-          docker-compose up -d
-          sleep 30
+    - name: Create env file
+      run: |
+        echo "DB_USER=postgres" >> .env
+        echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+        echo "DB_HOST=db" >> .env
+        echo "DB_NAME=addcomp" >> .env
+        echo "DB_PORT=5432" >> .env
+        echo "FLASK_APP=app.py" >> .env
+        echo "FLASK_ENV=development" >> .env
 
-          BACKEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000)
-          echo "Backend status code: $BACKEND_STATUS"
+    - name: Build and start services
+      run: |
+        docker-compose up -d --build
+        sleep 20 # Attendre que les services démarrent
 
-          FRONTEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000)
-          echo "Frontend status code: $FRONTEND_STATUS"
+    - name: Check running containers
+      run: docker ps -a
 
-          if [ "$BACKEND_STATUS" -ne 200 ] && [ "$BACKEND_STATUS" -ne 404 ]; then
-            echo "Backend service is not responding properly"
-            docker-compose logs backend
-            docker-compose down
-            exit 1
-          fi
+    - name: Test Backend API
+      run: |
+        curl --fail http://localhost:5000/api/campaigns || (docker-compose logs && exit 1)
 
-          if [ "$FRONTEND_STATUS" -ne 200 ] && [ "$FRONTEND_STATUS" -ne 404 ]; then
-            echo "Frontend service is not responding properly"
-            docker-compose logs frontend
-            docker-compose down
-            exit 1
-          fi
+    - name: Run Frontend Health Check
+      run: |
+        curl --fail http://localhost:3000 || (docker-compose logs && exit 1)
 
-          echo "All services are running correctly"
-          docker-compose down
+    - name: Display logs if tests fail
+      if: failure()
+      run: docker-compose logs
 
-  build-and-push:
-    needs: test
+    - name: Stop containers
+      if: always()
+      run: docker-compose down
+
+  deploy:
+    needs: test-and-build
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Log in to DockerHub
-        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u $DOCKERHUB_USERNAME --password-stdin
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build & Push Backend
-        run: |
-          docker build -t $BACKEND_IMAGE:latest ./backend
-          docker push $BACKEND_IMAGE:latest
+    - name: Build and push Backend
+      uses: docker/build-push-action@v4
+      with:
+        context: ./backend
+        push: true
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/addcomp-backend:latest
 
-      - name: Build & Push Frontend
-        run: |
-          docker build -t $FRONTEND_IMAGE:latest ./frontend
-          docker push $FRONTEND_IMAGE:latest
+    - name: Build and push Frontend
+      uses: docker/build-push-action@v4
+      with:
+        context: ./frontend
+        push: true
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/addcomp-frontend:latest
